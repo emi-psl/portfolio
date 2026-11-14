@@ -1,5 +1,4 @@
 # portfolio
-emi's portfolio
 
 An animated personal portfolio for **Phyu Sin Lynn (Emi)**, Applied AI & Analytics student at Singapore Polytechnic.
 Retro-CRT and paper-letter design: a TV that switches on, a wax-sealed envelope that opens, scrolling star banners and pop-up project cards.
