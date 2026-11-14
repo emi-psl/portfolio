@@ -42,7 +42,7 @@ const PROJECTS = [
       "Developed classification models to predict machine failures.",
       "Applied preprocessing, feature scaling, baseline comparison and hyperparameter optimisation.",
     ],
-    repo: "",
+    repo: "https://github.com/emi-psl/factory-machine-failure-prediction",
     demo: "",
   },
   {
@@ -56,7 +56,7 @@ const PROJECTS = [
       "Compared K-Means, Agglomerative Clustering and Gaussian Mixture Models.",
       "Used PCA to reduce dimensions and visualise cluster structure.",
     ],
-    repo: "",
+    repo: "https://github.com/emi-psl/customer-segmentation-clustering",
     demo: "",
   },
   {
@@ -70,7 +70,7 @@ const PROJECTS = [
       "Built SARIMA models for each utility.",
       "Evaluated forecast error to compare models across the three utilities.",
     ],
-    repo: "",
+    repo: "https://github.com/emi-psl/energy-consumption-forecasting",
     demo: "",
   },
 
@@ -174,7 +174,7 @@ const PROJECTS = [
       "Analysed MOM graduate-employment data (2010–2024) to compare salary, job stability and job availability.",
       "Automated dataset downloads and result emails with a UiPath workflow.",
     ],
-    repo: "",
+    repo: "https://github.com/emi-psl/it-degree-vs-diploma-career-analysis",
     demo: "",
   },
   {
