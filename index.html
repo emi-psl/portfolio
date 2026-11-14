@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Emi — AI & Data Portfolio</title>
+  <meta name="description"
+    content="Portfolio of Phyu Sin Lynn (Emi), Applied AI & Analytics student at Singapore Polytechnic: machine learning, deep learning, data analytics and software projects.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400;1,9..144,600&family=Inter:wght@400;500;600;700&family=Pinyon+Script&family=Playfair+Display:ital,wght@0,400;0,600;1,400;1,600&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+  <!-- Film-grain overlay for the whole page -->
+  <div class="grain" aria-hidden="true"></div>
+
+  <!-- Small star that follows the cursor (desktop only) -->
+  <div class="cursor-star" aria-hidden="true">✶</div>
+
+  <!-- Floating navigation, appears after the hero -->
+  <nav class="nav" aria-label="Main">
+    <a href="#top" class="nav-logo">Emi<span>✶</span></a>
+    <a href="#about">About</a>
+    <a href="#contents">Work</a>
+    <a href="#contact">Contact</a>
+  </nav>
+
+  <!-- ============ 1. HERO: CRT television ============ -->
+  <header class="hero" id="top" data-accent="#c4161c">
+    <div class="tv">
+      <div class="screen">
+        <div class="field" aria-hidden="true">
+          <span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span>
+          <span class="blob b4"></span><span class="blob b5"></span><span class="blob b6"></span>
+          <svg class="dots" viewBox="0 0 400 120" preserveAspectRatio="none"></svg>
+        </div>
+
+        <div class="screen-corner tl">Phyu Sin Lynn (Emi)<br>(AI &amp; DATA STUDENT)</div>
+        <div class="screen-corner tc">Singapore Polytechnic<br>Applied AI &amp; Analytics</div>
+        <div class="screen-corner tr">SAY HELLO<br><a href="mailto:phyusinlynn9@gmail.com">(phyusinlynn9@gmail.com)</a>
+        </div>
+
+        <h1 class="hero-title">
+          <span class="welcome">welcome to my</span>
+          <span class="word"><span class="script">p</span>ort<span class="script f">f</span>olio</span>
+          <span class="tag">AI &amp; DATA<br>STUDENT</span>
+          <span class="tag-star">✶</span>
+        </h1>
+
+        <div class="screen-corner bl">PORTFOLIO<br>2026 EDITION</div>
+        <div class="screen-corner bc">Turning messy data into<br>clear, useful answers.</div>
+        <div class="screen-corner br">GITHUB<br><a href="https://github.com/emi-psl" target="_blank"
+            rel="noopener">github.com/emi-psl</a></div>
+
+        <div class="scanlines" aria-hidden="true"></div>
+        <div class="vignette" aria-hidden="true"></div>
+      </div>
+    </div>
+    <a class="scroll-hint" href="#letter">scroll ↓</a>
+  </header>
+
+  <div class="marquee cream" aria-hidden="true">
+    <div class="track"
+      data-words="Machine Learning|Deep Learning|Data Analytics|Generative AI|Data Engineering|Problem Solving|Curiosity">
+    </div>
+  </div>
+
+  <!-- ============ 2. LETTER in an envelope ============ -->
+  <section class="letter-section" id="letter" data-accent="#c4161c">
+    <div class="letter-corner tl">Welcome to my<br>Visual Diary</div>
+    <div class="letter-corner tr">2026</div>
+    <div class="envelope" id="envelope">
+      <div class="env-back"></div>
+      <div class="paper">
+        <p>A young <em>AI &amp; data</em> student who's passionate about <em>patterns, puzzles</em> and the quiet logic
+          hidden in everyday numbers.</p>
+        <span class="rule">–</span>
+        <p>For me, data is more than charts and accuracy scores — it's about finding answers that help people
+          <em>decide, understand</em> and act.</p>
+      </div>
+      <div class="env-front"></div>
+      <div class="env-flap"></div>
+      <button class="seal" id="seal" aria-label="Open or close the letter"><span>E</span></button>
+    </div>
+    <p class="seal-hint">click the seal ✶</p>
+  </section>
+
+  <div class="marquee cobalt" aria-hidden="true">
+    <div class="track" data-words="Interested|Creative Thinking|Problem Solving|Teamwork|Always Learning"></div>
+  </div>
+
+  <!-- ============ 3. ABOUT ============ -->
+  <section class="about theme-about" id="about" data-accent="#7a1e2c">
+    <div class="about-grid">
+      <div class="polaroid reveal" data-tilt>
+        <span class="tape"></span>
+        <div class="photo">
+          <!-- To use your own photo: save it as assets/me.jpg -->
+          <img src="assets/me.jpg" alt="Portrait of Emi" onerror="this.remove()">
+          <span class="monogram">E</span>
+        </div>
+        <h3 class="script-hi">Hi! I'm Emi</h3>
+        <dl class="facts">
+          <div>
+            <dt>Name</dt>
+            <dd>Phyu Sin Lynn</dd>
+          </div>
+          <div>
+            <dt>Based in</dt>
+            <dd>Singapore</dd>
+          </div>
+          <div>
+            <dt>Studying</dt>
+            <dd>Applied AI &amp; Analytics</dd>
+          </div>
+          <div>
+            <dt>CGPA</dt>
+            <dd>3.92 / 4.00</dd>
+          </div>
+        </dl>
+        <h4 class="script-sub">Languages</h4>
+        <ul class="langs">
+          <li>English — Fluent</li>
+          <li>Burmese — Native</li>
+          <li>Korean — Limited working</li>
+          <li>Chinese — Elementary</li>
+        </ul>
+        <div class="stamp" aria-hidden="true">
+          <svg viewBox="0 0 100 100">
+            <defs>
+              <path id="circ" d="M50,50 m-36,0 a36,36 0 1,1 72,0 a36,36 0 1,1 -72,0" />
+            </defs>
+            <text>
+              <textPath href="#circ">SINGAPORE POLYTECHNIC ✶ DAAA ✶ 2025–2028 ✶</textPath>
+            </text>
+          </svg>
+          <span>✶</span>
+        </div>
+      </div>
+
+      <div class="about-text reveal">
+        <h2 class="about-title"><span class="script">A</span>BOUT (ME)</h2>
+        <p>I'm a Year 2 Applied AI &amp; Analytics student at Singapore Polytechnic who loves the moment a messy dataset
+          finally makes sense. Over the past two years I've built CNN and RNN models, regression and classification
+          pipelines, a star-schema data warehouse and a full-stack web app.</p>
+        <p>My core strengths are machine learning, data analysis and clear communication. I care about doing things
+          properly — cleaning data carefully, building honest baselines and explaining results so anyone can understand
+          them. I'm looking for internships in machine learning and data analytics.</p>
+        <p class="thanks">Thanks for taking the time to visit my portfolio!</p>
+        <div class="chips">
+          <span>Python</span><span>SQL</span><span>TensorFlow</span><span>scikit-learn</span><span>pandas</span><span>Power
+            BI</span><span>Tableau</span><span>MySQL</span><span>MongoDB</span><span>Node.js</span><span>UiPath</span><span>Git</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="cv-cols">
+      <div class="reveal cv-card cv-edu">
+        <h3>Education</h3>
+        <p class="when">2025 – 2028</p>
+        <p><b>Singapore Polytechnic</b><br>Diploma in Applied AI &amp; Analytics<br>CGPA 3.92 · CCA Gold with Honours
+        </p>
+        <p class="when">2013 – 2024</p>
+        <p><b>Pride International School Myanmar</b><br>Cambridge IGCSE — 5 A*s, 2 As</p>
+      </div>
+      <div class="reveal cv-card cv-exp">
+        <h3>Experience</h3>
+        <p class="when">Nov 2024 – Apr 2025</p>
+        <p><b>Volunteer IELTS Trainer</b><br>Freelance</p>
+        <p class="when">Aug – Dec 2024</p>
+        <p><b>IGCSE Mathematics Tutor</b><br>Freelance</p>
+        <p class="when">2026</p>
+        <p><b>Events &amp; Crowd Engagement Staff</b><br>Mummy's Market Festival, Singapore EXPO</p>
+      </div>
+      <div class="reveal cv-card cv-hi">
+        <h3>Highlights</h3>
+        <p class="when">Hackathon</p>
+        <p><b>PolyFinTech Category Finalist</b><br>CLARITY, an agentic AI assistant</p>
+        <p class="when">Hackathon</p>
+        <p><b>Top 10 Team</b><br>SP Entrepreneurship Hackathon</p>
+        <p class="when">Leadership</p>
+        <p><b>Event Chairperson</b><br>SP International Students' Club (200+ participants)</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 4. TABLE OF CONTENTS ============ -->
+  <section class="contents" id="contents" data-accent="#c4161c">
+    <h2 class="toc-title">table <span class="script">of</span> contents<span class="star">✶</span></h2>
+    <ol class="toc" id="toc"><!-- filled by script.js --></ol>
+  </section>
+
+  <!-- ============ 5. PROJECT CHAPTERS (built from projects.js) ============ -->
+  <main id="chapters"></main>
+
+  <!-- ============ 6. CONTACT ============ -->
+  <section class="contact paper-bg" id="contact" data-accent="#1f3fb8">
+    <div class="airmail">
+    <h2 class="contact-title reveal"><span class="script">L</span>et's Contact!</h2>
+    <p class="contact-sub reveal">Open to internships in machine learning and data analytics. I'd love to hear from you.
+    </p>
+    <ul class="contact-links reveal">
+      <li><a href="mailto:phyusinlynn9@gmail.com"><span class="ic">✉</span>phyusinlynn9@gmail.com</a></li>
+      <li><a href="https://www.linkedin.com/in/phyusinlynn" target="_blank" rel="noopener"><span
+            class="ic">in</span>linkedin.com/in/phyusinlynn</a></li>
+      <li><a href="https://github.com/emi-psl" target="_blank" rel="noopener"><span
+            class="ic">gh</span>github.com/emi-psl</a></li>
+    </ul>
+    <p class="signoff">— Emi ✶</p>
+    </div>
+  </section>
+
+  <div class="marquee mustard" aria-hidden="true">
+    <div class="track" data-words="Thanks for visiting|Let's build something|See you soon"></div>
+  </div>
+  <footer class="footer">© 2026 Phyu Sin Lynn (Emi) · Designed &amp; built with care</footer>
+
+  <!-- Project detail pop-up -->
+  <dialog class="modal" id="modal" aria-labelledby="modal-title">
+    <button class="modal-close" id="modal-close" aria-label="Close">×</button>
+    <div class="modal-body" id="modal-body"></div>
+  </dialog>
+
+  <script src="projects.js"></script>
+  <script src="script.js"></script>
+</body>
+
+</html>

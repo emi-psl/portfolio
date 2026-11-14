@@ -1,0 +1,273 @@
+/* =========================================================
+   PROJECT DATA — edit this file to add or change projects.
+   Each project needs a `category` that matches one of the
+   CATEGORIES ids below. `repo` and `demo` are optional:
+   leave them as "" and the buttons will hide themselves.
+   ========================================================= */
+
+const CATEGORIES = [
+  { id: "ml", num: "01", title: "Machine Learning", tagline: "Regression · classification · clustering · forecasting" },
+  { id: "dl", num: "02", title: "Deep Learning", tagline: "CNNs · RNNs · generative models · reinforcement learning" },
+  { id: "gen", num: "03", title: "Generative AI", tagline: "Transformers · agentic AI" },
+  { id: "data", num: "04", title: "Data Analytics", tagline: "Statistics · visualisation · automation" },
+  { id: "eng", num: "05", title: "Data Engineering", tagline: "Warehousing · SQL · NoSQL" },
+  { id: "dev", num: "06", title: "Software & Backend", tagline: "APIs · authentication · algorithms" },
+];
+
+const PROJECTS = [
+  // ---------------- 01 Machine Learning ----------------
+  {
+    category: "ml",
+    title: "House Price Prediction",
+    subtitle: "End-to-end regression pipeline",
+    type: "Solo project",
+    tools: ["Python", "scikit-learn", "Optuna"],
+    summary: "Predicting house prices from property features, from EDA to a tuned model.",
+    points: [
+      "Built a full regression pipeline: EDA, one-hot encoding, scaling and a log-transformed target.",
+      "Benchmarked 6 models from Linear Regression to Gradient Boosting, then tuned the best with Optuna.",
+      "Found house area, toilets and renovation status to be the strongest price drivers.",
+    ],
+    repo: "https://github.com/emi-psl/housing-price-prediction-ml",
+    demo: "",
+  },
+  {
+    category: "ml",
+    title: "Factory Machine Failure Prediction",
+    subtitle: "Classification on production data",
+    type: "Solo project",
+    tools: ["Python", "scikit-learn"],
+    summary: "Predicting machine failures from factory production data.",
+    points: [
+      "Developed classification models to predict machine failures.",
+      "Applied preprocessing, feature scaling, baseline comparison and hyperparameter optimisation.",
+    ],
+    repo: "",
+    demo: "",
+  },
+  {
+    category: "ml",
+    title: "Customer Segmentation",
+    subtitle: "Unsupervised learning",
+    type: "Solo project",
+    tools: ["Python", "scikit-learn", "PCA"],
+    summary: "Finding meaningful customer groups with clustering.",
+    points: [
+      "Compared K-Means, Agglomerative Clustering and Gaussian Mixture Models.",
+      "Used PCA to reduce dimensions and visualise cluster structure.",
+    ],
+    repo: "",
+    demo: "",
+  },
+  {
+    category: "ml",
+    title: "Utility Consumption Forecasting",
+    subtitle: "Time-series forecasting",
+    type: "Solo project",
+    tools: ["Python", "SARIMA"],
+    summary: "Forecasting electricity, gas and water consumption.",
+    points: [
+      "Built SARIMA models for each utility.",
+      "Evaluated forecast error to compare models across the three utilities.",
+    ],
+    repo: "",
+    demo: "",
+  },
+
+  // ---------------- 02 Deep Learning ----------------
+  {
+    category: "dl",
+    title: "Handwritten Letter Recognition",
+    subtitle: "CNN on 99K EMNIST images",
+    type: "Solo project",
+    tools: ["TensorFlow", "Keras", "CNN"],
+    summary: "Recognising handwritten letters with a carefully cleaned dataset and a tuned CNN.",
+    points: [
+      "Cleaned 99K images: removed 10K+ invalid labels and duplicates, fixed image orientation, used a stratified 70/15/15 split.",
+      "Improved a baseline CNN (92.7% validation accuracy) with batch normalisation, dropout, augmentation experiments and fine-tuning.",
+      "Reached 94.9% test accuracy and 0.949 macro F1; diagnosed the main confusions (I/L, G/Q) and built a prediction demo.",
+    ],
+    stat: { value: "94.9%", label: "test accuracy" },
+    repo: "",
+    demo: "",
+  },
+  {
+    category: "dl",
+    title: "Bilingual Review Sentiment",
+    subtitle: "RNNs on English + Malay pizza reviews",
+    type: "Solo project",
+    tools: ["TensorFlow", "LSTM", "GRU", "NLP"],
+    summary: "Classifying sentiment in mixed-language restaurant reviews.",
+    points: [
+      "Compared 6 SimpleRNN, LSTM and GRU variants, including sentence-splitting experiments.",
+      "Translated Malay reviews instead of discarding them, which improved validation macro F1.",
+      "Selected models with a custom macro-F1 callback; the final GRU reached 90.7% test accuracy.",
+    ],
+    stat: { value: "90.7%", label: "test accuracy" },
+    repo: "",
+    demo: "",
+  },
+  {
+    category: "dl",
+    title: "CIFAR-10 Image Generation",
+    subtitle: "GANs and VAEs",
+    type: "Solo project",
+    tools: ["TensorFlow", "GAN", "VAE"],
+    summary: "Generating CIFAR-10 images and comparing two families of generative models.",
+    points: ["Built and compared GAN and VAE models to generate CIFAR-10 images."],
+    repo: "",
+    demo: "",
+  },
+  {
+    category: "dl",
+    title: "Pendulum Control with DQN",
+    subtitle: "Deep reinforcement learning",
+    type: "Solo project",
+    tools: ["TensorFlow", "DQN"],
+    summary: "Teaching an agent to balance a pendulum.",
+    points: ["Trained and experimented with a Deep Q-Network agent on the Pendulum control task."],
+    repo: "",
+    demo: "",
+  },
+
+  // ---------------- 03 Generative AI ----------------
+  {
+    category: "gen",
+    title: "CLARITY — AI Insurance Navigator",
+    subtitle: "PolyFinTech Category Finalist",
+    type: "Team project · Team Aspire",
+    tools: ["Agentic AI", "Multi-agent"],
+    summary: "An agentic AI assistant that helps financial advisors prepare for client conversations.",
+    points: [
+      "Reached the PolyFinTech category finals.",
+      "Designed a multi-agent workflow with customer pre-screening, advisor review, compliance checks and audit logging.",
+      "Contributed to research, development and the final pitch.",
+    ],
+    stat: { value: "Category", label: "Finalist" },
+    repo: "",
+    demo: "",
+  },
+  {
+    category: "gen",
+    title: "Tiny Transformer Language Model",
+    subtitle: "Generative AI with LLMs",
+    type: "Solo project",
+    tools: ["Python", "Transformers", "Attention"],
+    summary: "Building a small Transformer from the ground up.",
+    points: [
+      "Built a small Transformer language model, working with attention and positional information.",
+      "Trained it and compared experiments to see how design choices affect results.",
+    ],
+    repo: "",
+    demo: "",
+  },
+
+  // ---------------- 04 Data Analytics ----------------
+  {
+    category: "data",
+    title: "IT Degree vs Diploma Career Outcomes",
+    subtitle: "Analysis + RPA automation",
+    type: "Team project · with Chu",
+    tools: ["Python", "pandas", "UiPath"],
+    summary: "Is a degree worth it for IT graduates? An analysis of official MOM data.",
+    points: [
+      "Analysed MOM graduate-employment data (2010–2024) to compare salary, job stability and job availability.",
+      "Automated dataset downloads and result emails with a UiPath workflow.",
+    ],
+    repo: "",
+    demo: "",
+  },
+  {
+    category: "data",
+    title: "Study Environment Analysis",
+    subtitle: "Hypothesis testing",
+    type: "Solo project",
+    tools: ["Python", "Statistics"],
+    summary: "Does where you study change how long you can focus?",
+    points: [
+      "Analysed data from 101 participants on study environment and uninterrupted study time.",
+      "Used descriptive statistics, histograms, boxplots and hypothesis testing, finding a significant difference (p = 0.038).",
+    ],
+    stat: { value: "p = 0.038", label: "significant" },
+    repo: "",
+    demo: "",
+  },
+  {
+    category: "data",
+    title: "Catch & Go — Location Analysis",
+    subtitle: "Business intelligence",
+    type: "Team project",
+    tools: ["Power BI"],
+    summary: "Where in Singapore should an AR game run its pilot?",
+    points: ["Built a Power BI analysis recommending Singapore locations for an AR-game pilot."],
+    repo: "",
+    demo: "",
+  },
+
+  // ---------------- 05 Data Engineering ----------------
+  {
+    category: "eng",
+    title: "Library Data Warehouse & MongoDB",
+    subtitle: "Dimensional modelling",
+    type: "Solo project",
+    tools: ["MySQL", "MongoDB", "SQL"],
+    summary: "From an operational library database to an analytics-ready warehouse.",
+    points: [
+      "Modelled a library OLTP database and a star-schema data warehouse with fact and dimension tables.",
+      "Wrote analytical SQL for reporting and used MongoDB for queries and aggregations.",
+      "Researched data lakes and DuckDB.",
+    ],
+    repo: "",
+    demo: "",
+  },
+  {
+    category: "eng",
+    title: "Green Grass Library Database",
+    subtitle: "Relational design",
+    type: "Solo project",
+    tools: ["MySQL", "EERD"],
+    summary: "Designing a relational database from requirements to implementation.",
+    points: ["Designed a database from an EERD, applied normalisation and implemented borrowing rules in MySQL."],
+    repo: "",
+    demo: "",
+  },
+
+  // ---------------- 06 Software & Backend ----------------
+  {
+    category: "dev",
+    title: "Cosmoz — Gamified Wellness App",
+    subtitle: "Full-stack web app",
+    type: "Solo project",
+    tools: ["Node.js", "Express", "MySQL", "JWT"],
+    summary: "Complete wellness challenges, earn points, explore planets and build colonies.",
+    points: [
+      "Built a full-stack app where wellness challenges earn points to discover planets, collect resources and climb leaderboards.",
+      "Implemented JWT authentication with bcrypt hashing and an MVC backend with protected and public routes.",
+      "Created 13 pages that render data from the backend.",
+    ],
+    repo: "https://github.com/emi-psl/cosmoz-web-app",
+    demo: "",
+  },
+  {
+    category: "dev",
+    title: "DNA Mutation Simulator",
+    subtitle: "Data structures",
+    type: "Solo project",
+    tools: ["Python", "Linked lists"],
+    summary: "Editing DNA sequences with a hand-built linked list.",
+    points: ["Implemented sequence editing, mutations and undo on a linked list, and analysed the time complexity of each operation."],
+    repo: "",
+    demo: "",
+  },
+  {
+    category: "dev",
+    title: "Sorting Algorithm Analysis",
+    subtitle: "Algorithms",
+    type: "Solo project",
+    tools: ["Python", "Big-O"],
+    summary: "How do sorting algorithms really compare?",
+    points: ["Ran experiments comparing sorting algorithms and their time complexity, with an individual report on in-place sorting."],
+    repo: "",
+    demo: "",
+  },
+];
