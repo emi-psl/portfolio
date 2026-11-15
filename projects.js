@@ -207,12 +207,16 @@ const PROJECTS = [
   {
     category: "data",
     title: "Catch & Go — Location Analysis",
-    subtitle: "Business intelligence",
-    type: "Team project",
-    tools: ["Power BI"],
-    summary: "Where in Singapore should an AR game run its pilot?",
-    points: ["Built a Power BI analysis recommending Singapore locations for an AR-game pilot."],
-    repo: "",
+    subtitle: "Where should an AR game pilot launch?",
+    type: "Team project · my part: Wi-Fi support analysis",
+    tools: ["Power BI", "Azure Maps", "Data storytelling"],
+    summary: "A Power BI data story choosing Singapore MRT areas for an AR-game pilot, using 200 surveyed residents.",
+    points: [
+      "Compared MRT areas on four criteria: player reach, public Wi-Fi support, MRT accessibility and suitable public locations.",
+      "My part: the Wi-Fi support analysis, ranking areas by hotspot distance, hotspot count and household reach, with a map of residents by Wi-Fi access.",
+      "Recommended a two-site pilot at Choa Chu Kang and Lakeside, the only areas strong across three or all four criteria.",
+    ],
+    repo: "https://github.com/emi-psl/catch-and-go-pilot-location-analysis",
     demo: "",
   },
 
