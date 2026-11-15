@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pendulum agent — DQN demo · Emi</title>
+  <meta name="description" content="Watch a Deep Q-Network swing up and balance a pendulum under four gravity settings, live in your browser.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="demo.css">
+  <style>
+    :root { --acc: #d4282e; }
+    #sim { width: 100%; aspect-ratio: 1; display: block; border-radius: 10px; }
+    .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 18px; font-family: var(--mono); font-size: 14px; margin-top: 4px; }
+    .stats b { display: block; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+    .torque { position: relative; height: 14px; background: rgba(0,0,0,.08); border-radius: 999px; margin-top: 6px; }
+    .torque i { position: absolute; top: 0; bottom: 0; background: var(--acc); border-radius: 999px; transition: left .08s, width .08s; }
+    .torque::after { content: ""; position: absolute; left: 50%; top: -3px; bottom: -3px; width: 2px; background: var(--ink); }
+    .pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; background: rgba(0,0,0,.08); }
+    .pill.up { background: #2f8f4e; color: #fff; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><a href="../#contents">← Back to portfolio</a><span class="tag">Live demo · Reinforcement learning</span></div>
+
+  <p class="eyebrow">Pendulum control with DQN</p>
+  <h1>Swing it up. <em>Keep it balanced.</em> Change gravity.</h1>
+  <p class="lede">My trained Deep Q-Network agents control the pendulum live, picking a motor torque 20 times a second. Each gravity setting has its own agent. Push the pendulum and watch it recover.</p>
+  <p class="credit">Team project that I led, with <a href="https://github.com/Chu268">Eaint Chu Nay Chi (Chu)</a> · <a href="https://github.com/emi-psl/dqn-pendulum-gravity-control">View on GitHub</a></p>
+
+  <div class="stage">
+    <div class="screen">
+      <div class="screen-label"><span><span class="dot">●</span> Simulation</span><span id="glabel">gravity 10</span></div>
+      <canvas id="sim" width="560" height="560" aria-label="Pendulum simulation"></canvas>
+    </div>
+
+    <div>
+      <div class="panel">
+        <h2>Gravity</h2>
+        <div class="chips" id="grav"></div>
+        <div class="btns">
+          <button class="btn primary" id="push">Give it a push</button>
+          <button class="btn" id="restart">Random restart</button>
+          <button class="btn on" id="agent">Agent: on</button>
+        </div>
+        <p class="status" id="status" style="margin-top:12px">Loading agents…</p>
+      </div>
+      <div class="panel">
+        <h2>Live readout</h2>
+        <div class="stats">
+          <div><b>Angle from upright</b><span id="ang">–</span></div>
+          <div><b>Status</b><span class="pill" id="up">–</span></div>
+          <div><b>Episode reward</b><span id="rew">–</span></div>
+          <div><b>Time upright</b><span id="upr">–</span></div>
+        </div>
+        <div style="margin-top:14px"><b class="mono" style="font-size:11px;letter-spacing:.1em;color:var(--muted)">TORQUE (−2 … +2)</b><div class="torque"><i id="tq"></i></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="how">
+    <div><b>The task</b>The motor is too weak to lift the pendulum directly, so the agent has to learn to swing it back and forth to build momentum, then catch it upright.</div>
+    <div><b>The agent</b>A small neural network (64-64 tanh) estimates the value of each torque level (9 or 11 options), and the agent picks the best one. It was trained with experience replay and a target network.</div>
+    <div><b>The results</b>Upright control reached about 80% under default gravity. For free-fall and anti-gravity, targeted refinement raised it to about 85%, from 24% and 50%.</div>
+  </div>
+
+  <footer><span>Phyu Sin Lynn (Emi)</span><a href="../">emi-psl.github.io/portfolio</a></footer>
+</div>
+
+<script src="nn.js"></script>
+<script>
+(async function () {
+  const SETTINGS = [
+    { key: "default", name: "Default (10)", g: 10 },
+    { key: "free_fall", name: "Free-fall (0)", g: 0 },
+    { key: "anti_gravity", name: "Anti-gravity (−10)", g: -10 },
+    { key: "supergravity", name: "Supergravity (15)", g: 15 },
+  ];
+  const $ = id => document.getElementById(id);
+  const cv = $("sim"), c = cv.getContext("2d");
+  let agents = {}, cur = SETTINGS[0], th = 0, thdot = 0, u = 0, reward = 0, steps = 0, upSteps = 0, agentOn = true, trail = [];
+
+  $("grav").innerHTML = SETTINGS.map((s, i) => `<button class="chip${i === 0 ? " on" : ""}" data-i="${i}">${s.name}</button>`).join("");
+  $("grav").onclick = e => { const b = e.target.closest(".chip"); if (!b) return; cur = SETTINGS[+b.dataset.i]; $("grav").querySelectorAll(".chip").forEach(x => x.classList.toggle("on", x === b)); restart(); };
+  $("push").onclick = () => { thdot += (Math.random() < .5 ? -1 : 1) * (4 + Math.random() * 3); };
+  $("restart").onclick = restart;
+  $("agent").onclick = () => { agentOn = !agentOn; $("agent").textContent = "Agent: " + (agentOn ? "on" : "off"); $("agent").classList.toggle("on", agentOn); };
+
+  function restart() { th = (Math.random() * 2 - 1) * Math.PI; thdot = Math.random() * 2 - 1; reward = 0; steps = 0; upSteps = 0; trail = []; $("glabel").textContent = "gravity " + cur.g; }
+
+  const norm = a => Math.atan2(Math.sin(a), Math.cos(a));
+
+  function act() {
+    const w = agents[cur.key]; if (!w || !agentOn) return 0;
+    const q = NN.qnet(w, Float32Array.from([Math.cos(th), Math.sin(th), thdot / 8]));
+    let a = 0; for (let i = 1; i < q.length; i++) if (q[i] > q[a]) a = i;
+    return -2 + 4 * a / (q.length - 1);
+  }
+
+  function tick() {
+    u = act();
+    const s = NN.pendulumStep(th, thdot, u, cur.g);
+    th = s.th; thdot = s.thdot; steps++;
+    if (steps <= 200) reward += s.reward;
+    const up = Math.abs(norm(th)) < 15 * Math.PI / 180 && Math.abs(thdot) < 1;
+    if (up) upSteps++;
+    trail.push(th); if (trail.length > 14) trail.shift();
+    $("ang").textContent = Math.round(norm(th) * 180 / Math.PI) + "°";
+    $("up").textContent = up ? "upright" : "swinging"; $("up").classList.toggle("up", up);
+    $("rew").textContent = reward.toFixed(1) + (steps < 200 ? `  (${steps}/200)` : "  (episode done)");
+    $("upr").textContent = Math.round(upSteps / steps * 100) + "%";
+    const tq = $("tq"), half = 50 * Math.abs(u) / 2;
+    tq.style.left = (u >= 0 ? 50 : 50 - half) + "%"; tq.style.width = half + "%";
+  }
+
+  function draw() {
+    const W = cv.width, cx = W / 2, cy = W / 2, L = W * 0.34;
+    c.fillStyle = "#0c0a09"; c.fillRect(0, 0, W, W);
+    // upright target zone (±15°)
+    c.fillStyle = "rgba(47,143,78,.18)"; c.beginPath(); c.moveTo(cx, cy);
+    c.arc(cx, cy, L + 30, -Math.PI / 2 - 15 * Math.PI / 180, -Math.PI / 2 + 15 * Math.PI / 180); c.closePath(); c.fill();
+    c.strokeStyle = "rgba(255,255,255,.08)"; c.lineWidth = 1; c.beginPath(); c.arc(cx, cy, L, 0, 2 * Math.PI); c.stroke();
+    // trail
+    trail.forEach((a, i) => { const x = cx + L * Math.sin(a), y = cy - L * Math.cos(a); c.fillStyle = `rgba(212,40,46,${(i + 1) / trail.length * .35})`; c.beginPath(); c.arc(x, y, 10, 0, 2 * Math.PI); c.fill(); });
+    // torque arc
+    if (Math.abs(u) > 0.01) {
+      c.strokeStyle = "#e9c46a"; c.lineWidth = 5; c.beginPath();
+      const s = th - Math.PI / 2; c.arc(cx, cy, 34, s, s + u * 0.9, u < 0); c.stroke();
+    }
+    // rod + bob (theta = 0 is upright)
+    const x = cx + L * Math.sin(th), y = cy - L * Math.cos(th);
+    c.strokeStyle = "#f4efe4"; c.lineWidth = 12; c.lineCap = "round"; c.beginPath(); c.moveTo(cx, cy); c.lineTo(x, y); c.stroke();
+    c.fillStyle = "#d4282e"; c.beginPath(); c.arc(x, y, 18, 0, 2 * Math.PI); c.fill();
+    c.fillStyle = "#f4efe4"; c.beginPath(); c.arc(cx, cy, 9, 0, 2 * Math.PI); c.fill();
+  }
+
+  restart(); draw();
+  try {
+    const loaded = await Promise.all(SETTINGS.map(s => NN.load("models", "dqn_" + s.key)));
+    SETTINGS.forEach((s, i) => agents[s.key] = loaded[i]);
+    $("status").textContent = "Agents loaded. Each step lasts 0.05 s, the same as the training environment.";
+  } catch (e) { $("status").textContent = "Couldn't load the agents. Please refresh the page."; }
+
+  // 20 steps per second, like the Gym environment (dt = 0.05 s)
+  let acc = 0, last = performance.now();
+  function loop(now) {
+    acc += Math.min(200, now - last); last = now;
+    while (acc >= 50) { tick(); acc -= 50; }
+    draw(); requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

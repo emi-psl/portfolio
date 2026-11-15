@@ -1,0 +1,1 @@
+{"dtype": "f32", "tensors": [{"name": "l0.k", "shape": [3, 64], "offset": 0}, {"name": "l0.b", "shape": [64], "offset": 768}, {"name": "l1.k", "shape": [64, 64], "offset": 1024}, {"name": "l1.b", "shape": [64], "offset": 17408}, {"name": "l2.k", "shape": [64, 9], "offset": 17664}, {"name": "l2.b", "shape": [9], "offset": 19968}]}

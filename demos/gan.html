@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Generate images — conditional GAN demo · Emi</title>
+  <meta name="description" content="Pick a CIFAR-10 class and a conditional DCGAN generates new images in your browser.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="demo.css">
+  <style>
+    :root { --acc: #1f3fb8; }
+    .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .tile { position: relative; aspect-ratio: 1; background: #15120f; border-radius: 6px; overflow: hidden; }
+    .tile canvas { width: 100%; height: 100%; image-rendering: pixelated; display: block; opacity: 0; transform: scale(.94); transition: opacity .35s, transform .35s; }
+    .tile canvas.shown { opacity: 1; transform: none; }
+    .tile span { position: absolute; left: 6px; bottom: 5px; font-family: var(--mono); font-size: 10.5px; color: #fff; background: rgba(0,0,0,.55); padding: 1px 6px; border-radius: 999px; }
+    .load { height: 4px; background: rgba(255,255,255,.12); border-radius: 999px; overflow: hidden; margin-bottom: 12px; }
+    .load i { display: block; height: 100%; width: 0; background: var(--acc); transition: width .2s; }
+    .toggle { display: flex; align-items: center; gap: 8px; font-size: 14px; margin-top: 14px; cursor: pointer; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><a href="../#contents">← Back to portfolio</a><span class="tag">Live demo · Generative models</span></div>
+
+  <p class="eyebrow">CIFAR-10 image generation</p>
+  <h1>Pick a class. <em>The GAN</em> invents new images.</h1>
+  <p class="lede">The final conditional DCGAN from our CIFAR-10 project (test FID 33.69) turns random noise plus a class label into a brand-new 32×32 image. It runs in your browser, so every image is new.</p>
+  <p class="credit">Team project led by <a href="https://github.com/Chu268">Eaint Chu Nay Chi (Chu)</a>, with my support on experiment design and evaluation · <a href="https://github.com/emi-psl/cifar10-gan-vae-image-generation">View on GitHub</a></p>
+
+  <div class="stage">
+    <div class="screen">
+      <div class="screen-label"><span><span class="dot">●</span> Generator output</span><span id="what">32×32 px, enlarged</span></div>
+      <div class="load" id="loadbar"><i></i></div>
+      <div class="grid" id="grid"></div>
+    </div>
+
+    <div>
+      <div class="panel">
+        <h2>Choose a class</h2>
+        <div class="chips" id="chips"></div>
+        <label class="toggle"><input type="checkbox" id="mix"> Mix all ten classes</label>
+        <div class="btns">
+          <button class="btn primary" id="go" disabled>Generate 8 images</button>
+        </div>
+        <p class="status" id="status" style="margin-top:12px">Loading the generator (5 MB)…</p>
+      </div>
+      <div class="panel">
+        <h2>Why they look like this</h2>
+        <p style="font-size:14.5px">CIFAR-10 photos are only 32×32 pixels, so these are enlarged and naturally blurry. Ships, planes, cars and horses usually come out clearest. Cats, dogs and frogs are harder because their shapes vary much more.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="how">
+    <div><b>Noise + label</b>The generator takes 100 random numbers plus a learned embedding of the class you pick, so the same class always gives different results.</div>
+    <div><b>Upsampling</b>A dense layer makes a 4×4 feature map. Transposed convolutions then grow it to 8×8, 16×16 and finally a 32×32 colour image.</div>
+    <div><b>How it improved</b>Starting from FID 55.14, label smoothing, a stronger generator, data augmentation and 100 epochs of training brought it to a test FID of 33.69 (lower is better).</div>
+  </div>
+
+  <footer><span>Phyu Sin Lynn (Emi)</span><a href="../">emi-psl.github.io/portfolio</a></footer>
+</div>
+
+<script src="nn.js"></script>
+<script>
+(async function () {
+  const CLASSES = ["airplane", "automobile", "bird", "cat", "deer", "dog", "frog", "horse", "ship", "truck"];
+  const N = 8;
+  const grid = document.getElementById("grid"), chips = document.getElementById("chips");
+  const go = document.getElementById("go"), status = document.getElementById("status"), mix = document.getElementById("mix");
+  let chosen = 8, weights = null, busy = false;
+
+  chips.innerHTML = CLASSES.map((c, i) => `<button class="chip${i === chosen ? " on" : ""}" data-i="${i}">${c}</button>`).join("");
+  chips.addEventListener("click", e => {
+    const b = e.target.closest(".chip"); if (!b) return;
+    chosen = +b.dataset.i; mix.checked = false;
+    chips.querySelectorAll(".chip").forEach(c => c.classList.toggle("on", c === b));
+    if (weights) generate();
+  });
+  mix.addEventListener("change", () => { chips.querySelectorAll(".chip").forEach(c => c.classList.toggle("on", !mix.checked && +c.dataset.i === chosen)); if (weights) generate(); });
+
+  grid.innerHTML = Array.from({ length: N }, () => `<div class="tile"><canvas width="32" height="32"></canvas><span></span></div>`).join("");
+  const tiles = [...grid.querySelectorAll(".tile")];
+
+  const frame = () => new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));
+
+  async function generate() {
+    if (busy) return; busy = true; go.disabled = true;
+    tiles.forEach(t => { t.querySelector("canvas").classList.remove("shown"); t.querySelector("span").textContent = ""; });
+    const t0 = performance.now();
+    for (let k = 0; k < N; k++) {
+      const label = mix.checked ? Math.floor(Math.random() * 10) : chosen;
+      status.textContent = `Generating image ${k + 1} of ${N}…`;
+      await frame();
+      const out = NN.cgan(weights, NN.randn(100), label);
+      const cv = tiles[k].querySelector("canvas"), c = cv.getContext("2d"), img = c.createImageData(32, 32);
+      for (let p = 0; p < 1024; p++) {
+        for (let ch = 0; ch < 3; ch++) img.data[p * 4 + ch] = Math.round(Math.min(1, Math.max(0, (out[p * 3 + ch] + 1) / 2)) * 255);
+        img.data[p * 4 + 3] = 255;
+      }
+      c.putImageData(img, 0, 0); cv.classList.add("shown");
+      tiles[k].querySelector("span").textContent = CLASSES[label];
+    }
+    status.textContent = `Done: ${N} new images in ${((performance.now() - t0) / 1000).toFixed(1)} s. Click again for more.`;
+    busy = false; go.disabled = false;
+  }
+  go.onclick = generate;
+
+  // Load the weights with a progress bar
+  const bar = document.querySelector("#loadbar i");
+  try {
+    const manifest = await (await fetch("models/cgan.json")).json();
+    const res = await fetch("models/cgan.bin");
+    const total = +res.headers.get("content-length") || 5130198;
+    const reader = res.body.getReader(), parts = []; let got = 0;
+    for (;;) { const { done, value } = await reader.read(); if (done) break; parts.push(value); got += value.length; bar.style.width = Math.min(100, got / total * 100) + "%"; }
+    const buf = new Uint8Array(got); let o = 0; for (const p of parts) { buf.set(p, o); o += p.length; }
+    weights = NN.unpack(manifest, buf.buffer);
+    document.getElementById("loadbar").style.display = "none";
+    go.disabled = false;
+    generate();
+  } catch (e) { status.textContent = "Couldn't load the generator. Please refresh the page."; }
+})();
+</script>
+</body>
+</html>

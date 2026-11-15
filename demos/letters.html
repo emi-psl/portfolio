@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Draw a letter — EMNIST CNN demo · Emi</title>
+  <meta name="description" content="Draw a letter and a CNN trained on EMNIST guesses it, running in your browser.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="demo.css">
+  <style>
+    :root { --acc: #d4282e; }
+    #pad { display: block; width: 100%; aspect-ratio: 1; background: #000; border-radius: 10px; touch-action: none; cursor: crosshair; }
+    .hint { position: absolute; inset: 44px 16px 16px; display: grid; place-items: center; pointer-events: none; color: #6f675c; font-family: var(--mono); font-size: 14px; transition: opacity .3s; }
+    .guess { display: flex; align-items: center; gap: 20px; }
+    .big { font-family: var(--serif); font-size: 104px; line-height: .9; color: var(--acc); min-width: 80px; text-align: center; }
+    .seen { display: flex; gap: 14px; align-items: center; margin-top: 14px; font-size: 13.5px; color: var(--muted); }
+    #seen { width: 84px; height: 84px; image-rendering: pixelated; background: #000; border-radius: 6px; flex: none; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><a href="../#contents">← Back to portfolio</a><span class="tag">Live demo · Deep learning</span></div>
+
+  <p class="eyebrow">Handwritten letter recognition</p>
+  <h1>Draw a letter. <em>My CNN</em> will guess it.</h1>
+  <p class="lede">This is the final CNN from my EMNIST project (94.9% test accuracy), running entirely in your browser. Nothing is uploaded.</p>
+  <p class="credit">Solo project · <a href="https://github.com/emi-psl/emnist-handwritten-letter-recognition">View the code on GitHub</a></p>
+
+  <div class="stage">
+    <div class="screen">
+      <div class="screen-label"><span><span class="dot">●</span> Canvas</span><span>draw one letter, A–Z</span></div>
+      <canvas id="pad" width="280" height="280" aria-label="Drawing area"></canvas>
+      <div class="hint" id="hint">draw here ✎</div>
+    </div>
+
+    <div>
+      <div class="panel">
+        <h2>Prediction</h2>
+        <div class="guess">
+          <div class="big" id="big">?</div>
+          <div style="flex:1" id="bars"></div>
+        </div>
+        <div class="btns">
+          <button class="btn primary" id="clear">Clear</button>
+          <button class="btn" id="undo">Undo stroke</button>
+        </div>
+        <p class="status" id="status" style="margin-top:12px">Loading model…</p>
+      </div>
+      <div class="panel">
+        <h2>What the model sees</h2>
+        <div class="seen">
+          <canvas id="seen" width="28" height="28"></canvas>
+          <span>Your drawing is cropped, centred and shrunk to 28×28 pixels, the same format as the training images.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="how">
+    <div><b>The data</b>About 99K handwritten letters from EMNIST. I removed 10K+ invalid labels and duplicates, and fixed the dataset's rotated images.</div>
+    <div><b>The model</b>Five convolution layers with batch normalisation and dropout, then global average pooling and two dense layers, fine-tuned at a lower learning rate.</div>
+    <div><b>Good to know</b>Upper and lower case share one class, so “a” and “A” both count as A. Look-alike pairs such as I / L and G / Q were the most common mistakes in testing.</div>
+  </div>
+
+  <footer><span>Phyu Sin Lynn (Emi)</span><a href="../">emi-psl.github.io/portfolio</a></footer>
+</div>
+
+<script src="nn.js"></script>
+<script>
+(async function () {
+  const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const pad = document.getElementById("pad"), ctx = pad.getContext("2d");
+  const seen = document.getElementById("seen").getContext("2d");
+  const status = document.getElementById("status"), big = document.getElementById("big"), bars = document.getElementById("bars");
+  const hint = document.getElementById("hint");
+  let weights = null, strokes = [], current = null, timer = null;
+
+  bars.innerHTML = [0, 1, 2].map(() => `<div class="bar"><span class="l">–</span><div class="track"><div class="fill"></div></div><span class="pct"></span></div>`).join("");
+
+  function redraw() {
+    ctx.fillStyle = "#000"; ctx.fillRect(0, 0, 280, 280);
+    ctx.strokeStyle = "#fff"; ctx.lineWidth = 20; ctx.lineCap = "round"; ctx.lineJoin = "round";
+    for (const s of strokes) {
+      ctx.beginPath(); ctx.moveTo(s[0][0], s[0][1]);
+      if (s.length === 1) ctx.lineTo(s[0][0] + 0.1, s[0][1]);
+      for (const p of s) ctx.lineTo(p[0], p[1]);
+      ctx.stroke();
+    }
+    hint.style.opacity = strokes.length ? 0 : 1;
+  }
+
+  const pos = e => { const r = pad.getBoundingClientRect(); return [(e.clientX - r.left) * 280 / r.width, (e.clientY - r.top) * 280 / r.height]; };
+  pad.addEventListener("pointerdown", e => { pad.setPointerCapture(e.pointerId); current = [pos(e)]; strokes.push(current); redraw(); });
+  pad.addEventListener("pointermove", e => { if (!current) return; current.push(pos(e)); redraw(); });
+  const end = () => { if (!current) return; current = null; clearTimeout(timer); timer = setTimeout(predict, 120); };
+  pad.addEventListener("pointerup", end); pad.addEventListener("pointercancel", end);
+
+  document.getElementById("clear").onclick = () => { strokes = []; redraw(); reset(); };
+  document.getElementById("undo").onclick = () => { strokes.pop(); redraw(); strokes.length ? predict() : reset(); };
+
+  function reset() {
+    big.textContent = "?"; seen.clearRect(0, 0, 28, 28);
+    bars.querySelectorAll(".bar").forEach(b => { b.querySelector(".l").textContent = "–"; b.querySelector(".fill").style.width = 0; b.querySelector(".pct").textContent = ""; });
+  }
+
+  // Crop to the ink, centre in a square, shrink so the letter fits a 20×20 box inside 28×28 (tested to work best).
+  function toInput() {
+    const src = ctx.getImageData(0, 0, 280, 280).data;
+    let x0 = 280, y0 = 280, x1 = -1, y1 = -1;
+    for (let y = 0; y < 280; y++) for (let x = 0; x < 280; x++) if (src[(y * 280 + x) * 4] > 25) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    if (x1 < 0) return null;
+    const w = x1 - x0 + 1, h = y1 - y0 + 1, s = Math.max(w, h);
+    const sq = document.createElement("canvas"); sq.width = sq.height = s;
+    const sc = sq.getContext("2d"); sc.fillStyle = "#000"; sc.fillRect(0, 0, s, s);
+    sc.drawImage(pad, x0, y0, w, h, (s - w) / 2, (s - h) / 2, w, h);
+    // Area-average down to 20×20 in steps for a smooth result
+    let cur = sq;
+    while (cur.width > 40) { const n = document.createElement("canvas"); n.width = n.height = Math.max(20, Math.floor(cur.width / 2)); const nc = n.getContext("2d"); nc.imageSmoothingQuality = "high"; nc.drawImage(cur, 0, 0, n.width, n.height); cur = n; }
+    const out = document.createElement("canvas"); out.width = out.height = 28;
+    const oc = out.getContext("2d"); oc.fillStyle = "#000"; oc.fillRect(0, 0, 28, 28); oc.imageSmoothingQuality = "high";
+    oc.drawImage(cur, 4, 4, 20, 20);
+    const px = oc.getImageData(0, 0, 28, 28).data, x = new Float32Array(784);
+    let mx = 0; for (let i = 0; i < 784; i++) { x[i] = px[i * 4] / 255; if (x[i] > mx) mx = x[i]; }
+    if (mx > 0) for (let i = 0; i < 784; i++) x[i] /= mx;
+    seen.putImageData(oc.getImageData(0, 0, 28, 28), 0, 0);
+    return x;
+  }
+
+  function predict() {
+    if (!weights) return;
+    const x = toInput(); if (!x) return reset();
+    const p = NN.emnist(weights, x);
+    const top = [...p].map((v, i) => [v, i]).sort((a, b) => b[0] - a[0]).slice(0, 3);
+    big.textContent = LETTERS[top[0][1]];
+    bars.querySelectorAll(".bar").forEach((b, k) => {
+      b.querySelector(".l").textContent = LETTERS[top[k][1]];
+      b.querySelector(".fill").style.width = (top[k][0] * 100).toFixed(1) + "%";
+      b.querySelector(".pct").textContent = (top[k][0] * 100).toFixed(1) + "%";
+    });
+  }
+
+  redraw();
+  try {
+    weights = await NN.load("models", "emnist");
+    status.textContent = "Model loaded (0.6 MB). Draw a letter on the black canvas.";
+  } catch (e) { status.textContent = "Couldn't load the model. Please refresh the page."; }
+})();
+</script>
+</body>
+</html>

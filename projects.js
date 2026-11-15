@@ -89,7 +89,7 @@ const PROJECTS = [
     ],
     stat: { value: "94.9%", label: "test accuracy" },
     repo: "https://github.com/emi-psl/emnist-handwritten-letter-recognition",
-    demo: "",
+    demo: "demos/letters.html",
   },
   {
     category: "dl",
@@ -121,7 +121,7 @@ const PROJECTS = [
     ],
     stat: { value: "33.7", label: "test FID" },
     repo: "https://github.com/emi-psl/cifar10-gan-vae-image-generation",
-    demo: "",
+    demo: "demos/gan.html",
   },
   {
     category: "dl",
@@ -137,7 +137,7 @@ const PROJECTS = [
     ],
     repo: "https://github.com/emi-psl/dqn-pendulum-gravity-control",
     stat: { value: "85%", label: "upright control" },
-    demo: "",
+    demo: "demos/pendulum.html",
   },
 
   // ---------------- 03 Generative AI ----------------
@@ -171,7 +171,7 @@ const PROJECTS = [
     ],
     stat: { value: "42.9%", label: "next-char accuracy" },
     repo: "https://github.com/emi-psl/tiny-transformer-attention-heads",
-    demo: "",
+    demo: "demos/transformer.html",
   },
 
   // ---------------- 04 Data Analytics ----------------

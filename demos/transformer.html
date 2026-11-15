@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tiny Transformer — text generation demo · Emi</title>
+  <meta name="description" content="Type a prompt and a tiny Transformer built from scratch continues it character by character, with its attention shown live.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="demo.css">
+  <style>
+    :root { --acc: #1f3fb8; }
+    .term { font-family: var(--mono); font-size: 18px; color: #e9e2d4; min-height: 150px; white-space: pre-wrap; word-break: break-word; line-height: 1.6; }
+    .term .gen { color: #8fb0ff; }
+    .term .cur { display: inline-block; width: .6em; background: #8fb0ff; animation: blink 1s steps(1) infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+    .prompt { width: 100%; padding: 10px 12px; border: 1.5px solid var(--ink); border-radius: 10px; background: #fff; font-family: var(--mono); font-size: 15px; }
+    .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 12px; font-size: 14px; }
+    #heat { width: 100%; max-width: 420px; display: block; margin-top: 10px; image-rendering: pixelated; }
+    .heads { display: flex; gap: 6px; }
+    .heads .chip { padding: 4px 10px; font-size: 12.5px; }
+    .nl { color: #6f675c; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><a href="../#contents">← Back to portfolio</a><span class="tag">Live demo · Generative AI</span></div>
+
+  <p class="eyebrow">Tiny Transformer from scratch</p>
+  <h1>A language model <em>small enough to see inside.</em></h1>
+  <p class="lede">This is my 14,718-parameter causal Transformer, the 4-head baseline from my coursework. It predicts the next character one at a time. Type a prompt, then watch both the text and where its attention goes.</p>
+  <p class="credit">Solo project · <a href="https://github.com/emi-psl/tiny-transformer-attention-heads">View the code on GitHub</a></p>
+
+  <div class="stage">
+    <div>
+      <div class="screen">
+        <div class="screen-label"><span><span class="dot">●</span> Output</span><span>context: last 24 characters</span></div>
+        <div class="term" id="term"></div>
+      </div>
+      <div class="panel" style="margin-top:20px">
+        <h2>Your prompt</h2>
+        <input class="prompt" id="prompt" value="the alpha lab " maxlength="60" aria-label="Prompt">
+        <div class="chips" style="margin-top:10px" id="examples"></div>
+        <div class="row">
+          <label><input type="radio" name="mode" value="greedy" checked> Greedy (always the top choice)</label>
+          <label><input type="radio" name="mode" value="sample"> Sample (temperature 0.8)</label>
+        </div>
+        <div class="btns">
+          <button class="btn primary" id="go" disabled>Generate 40 characters</button>
+          <button class="btn" id="step" disabled>One character at a time</button>
+        </div>
+        <p class="note">The vocabulary is lowercase letters, space, full stop and comma, so other characters are removed.</p>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel">
+        <h2>Next character</h2>
+        <div id="bars"></div>
+        <p class="status" id="status">Loading model…</p>
+      </div>
+      <div class="panel">
+        <h2>Attention</h2>
+        <div class="heads" id="heads"></div>
+        <canvas id="heat" width="480" height="480" aria-label="Attention heatmap"></canvas>
+        <p class="note">Each row is a character, and each column shows how strongly it attends to an earlier character. Darker means more attention. The empty top-right triangle is the causal mask: nothing can look ahead.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="how">
+    <div><b>What it learned</b>It was trained for 160 updates on 108 short sentences such as “the alpha lab opens at nine.”, so it mainly copies those patterns. On unseen wording its validation accuracy was 41%.</div>
+    <div><b>Inside the block</b>Embeddings plus sinusoidal positions feed one block: layer norm, 4-head causal self-attention, a residual connection, then a GELU feed-forward layer and another residual connection.</div>
+    <div><b>The experiment</b>I predicted that 2 heads would do worse than 4. It actually ended with lower validation loss (3.14 vs 3.42), so the result contradicted my hypothesis.</div>
+  </div>
+
+  <footer><span>Phyu Sin Lynn (Emi)</span><a href="../">emi-psl.github.io/portfolio</a></footer>
+</div>
+
+<script src="nn.js"></script>
+<script>
+(async function () {
+  const CHARS = "\n .,abcdefghijklmnopqrstuvwxyz", CTX = 24, HEADS = 4;
+  const $ = id => document.getElementById(id);
+  const term = $("term"), promptEl = $("prompt"), status = $("status"), bars = $("bars"), heat = $("heat"), hc = heat.getContext("2d");
+  let w = null, ids = [], promptLen = 0, lastAttn = null, head = 0, running = false;
+
+  ["the alpha lab ", "visit gamma lab at ", "at ten, the ", "opening time for beta lab is "].forEach(t => {
+    const b = document.createElement("button"); b.className = "chip"; b.textContent = t.trim() + " …"; b.onclick = () => { promptEl.value = t; reset(); }; $("examples").appendChild(b);
+  });
+  $("heads").innerHTML = Array.from({ length: HEADS }, (_, i) => `<button class="chip${i === 0 ? " on" : ""}" data-h="${i}">Head ${i + 1}</button>`).join("");
+  $("heads").onclick = e => { const b = e.target.closest(".chip"); if (!b) return; head = +b.dataset.h; $("heads").querySelectorAll(".chip").forEach(c => c.classList.toggle("on", c === b)); drawHeat(); };
+  bars.innerHTML = Array.from({ length: 5 }, () => `<div class="bar"><span class="l"></span><div class="track"><div class="fill"></div></div><span class="pct"></span></div>`).join("");
+
+  const clean = s => s.toLowerCase().split("").filter(c => CHARS.includes(c) && c !== "\n").join("");
+  const show = c => c === "\n" ? "↵" : c === " " ? "␣" : c;
+
+  function reset() {
+    promptEl.value = clean(promptEl.value) || "the ";
+    ids = [...promptEl.value].map(c => CHARS.indexOf(c)); promptLen = ids.length;
+    render(); if (w) step(false);
+  }
+  promptEl.addEventListener("change", reset);
+  promptEl.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); reset(); } });
+
+  function render(cursor) {
+    const p = ids.slice(0, promptLen).map(i => CHARS[i]).join(""), g = ids.slice(promptLen).map(i => CHARS[i]).join("");
+    term.innerHTML = "";
+    term.append(document.createTextNode(p));
+    const s = document.createElement("span"); s.className = "gen"; s.textContent = g; term.append(s);
+    if (cursor !== false) { const c = document.createElement("span"); c.className = "cur"; c.innerHTML = "&nbsp;"; term.append(c); }
+  }
+
+  // Run the model on the current window; optionally append the next character.
+  function step(append) {
+    const win = ids.slice(-CTX);
+    const { logits, attn } = NN.transformer(w, win, HEADS);
+    const last = logits[logits.length - 1];
+    const sample = document.querySelector("input[name=mode]:checked").value === "sample";
+    const probs = NN.softmax(sample ? last.map(v => v / 0.8) : last);
+    const top = [...probs].map((v, i) => [v, i]).sort((a, b) => b[0] - a[0]).slice(0, 5);
+    bars.querySelectorAll(".bar").forEach((b, k) => {
+      b.querySelector(".l").textContent = show(CHARS[top[k][1]]);
+      b.querySelector(".fill").style.width = (top[k][0] * 100).toFixed(1) + "%";
+      b.querySelector(".pct").textContent = (top[k][0] * 100).toFixed(1) + "%";
+    });
+    lastAttn = { attn, win }; drawHeat();
+    if (!append) return;
+    let next = top[0][1];
+    if (sample) { let r = Math.random(); for (let i = 0; i < probs.length; i++) { r -= probs[i]; if (r <= 0) { next = i; break; } } }
+    ids.push(next);
+  }
+
+  function drawHeat() {
+    if (!lastAttn) return;
+    const { attn, win } = lastAttn, T = win.length, pad = 26, size = heat.width - pad, cell = size / T;
+    hc.fillStyle = "#f4efe4"; hc.fillRect(0, 0, heat.width, heat.height);
+    for (let i = 0; i < T; i++) for (let j = 0; j < T; j++) {
+      const v = j <= i ? attn[head][i][j] : 0;
+      hc.fillStyle = j <= i ? `rgba(31,63,184,${0.06 + 0.94 * Math.sqrt(v)})` : "#f4efe4";
+      hc.fillRect(pad + j * cell, pad + i * cell, cell - 1, cell - 1);
+    }
+    hc.fillStyle = "#1f1b17"; hc.font = `${Math.min(13, cell * .8)}px DM Mono, monospace`; hc.textAlign = "center"; hc.textBaseline = "middle";
+    for (let t = 0; t < T; t++) {
+      const ch = show(CHARS[win[t]]);
+      hc.fillText(ch, pad + t * cell + cell / 2, pad / 2);
+      hc.fillText(ch, pad / 2, pad + t * cell + cell / 2);
+    }
+  }
+
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  $("go").onclick = async () => {
+    if (running) return; running = true; $("go").disabled = $("step").disabled = true;
+    reset();
+    for (let k = 0; k < 40; k++) { step(true); render(); await sleep(45); }
+    step(false); render();
+    status.textContent = "Done. Switch heads to see what each one focuses on.";
+    running = false; $("go").disabled = $("step").disabled = false;
+  };
+  $("step").onclick = () => { if (!running) { step(true); render(); step(false); } };
+
+  try {
+    w = await NN.load("models", "transformer");
+    status.textContent = "Model loaded. Press Generate.";
+    $("go").disabled = $("step").disabled = false;
+    reset();
+  } catch (e) { status.textContent = "Couldn't load the model. Please refresh the page."; }
+})();
+</script>
+</body>
+</html>
