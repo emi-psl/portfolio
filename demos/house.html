@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>House price estimator — Gradient Boosting demo · Emi</title>
+  <meta name="description" content="Describe a house and a tuned Gradient Boosting model estimates its sale price, live in your browser.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="demo.css">
+  <style>
+    :root { --acc: #c4161c; }
+    .field { margin: 14px 0; }
+    .field label { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 6px; }
+    .field label b { font-family: var(--mono); font-weight: 500; }
+    input[type=range] { width: 100%; accent-color: var(--acc); }
+    .price { font-family: var(--serif); font-size: clamp(40px, 6vw, 58px); color: #f4efe4; line-height: 1; }
+    .range { font-family: var(--mono); font-size: 13px; color: #a49b8e; margin-top: 8px; }
+    #chart { width: 100%; display: block; margin-top: 16px; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><a href="../#contents">← Back to portfolio</a><span class="tag">Live demo · Machine learning</span></div>
+
+  <p class="eyebrow">House price prediction</p>
+  <h1>Describe a house. <em>The model</em> prices it.</h1>
+  <p class="lede">This is the final Optuna-tuned Gradient Boosting model from my project, rebuilt from the notebook. It gives the same test results: MAE $112,036 and R² 0.52. It runs entirely in your browser.</p>
+  <p class="credit">Solo project · <a href="https://github.com/emi-psl/housing-price-prediction-ml">View the code on GitHub</a></p>
+
+  <div class="stage">
+    <div class="screen">
+      <div class="screen-label"><span><span class="dot">●</span> Estimated sale price</span><span>155 boosted trees</span></div>
+      <div class="price" id="price">–</div>
+      <div class="range" id="range"></div>
+      <svg id="chart" viewBox="0 0 520 300" aria-label="House area against price, with your house marked"></svg>
+    </div>
+
+    <div>
+      <div class="panel">
+        <h2>Your house</h2>
+        <div class="field"><label>House area <b id="v-area"></b></label><input type="range" id="area" min="165" max="1620" step="5" value="500"></div>
+        <div class="field"><label>Bedrooms <b id="v-bed"></b></label><input type="range" id="bed" min="1" max="6" step="1" value="3"></div>
+        <div class="field"><label>Toilets <b id="v-toilet"></b></label><input type="range" id="toilet" min="1" max="4" step="1" value="1"></div>
+        <div class="field"><label>Storeys <b id="v-stories"></b></label><input type="range" id="stories" min="1" max="4" step="1" value="2"></div>
+        <div class="field"><label>Furnishing</label>
+          <div class="chips" id="reno">
+            <button class="chip" data-v="furnished">Furnished</button>
+            <button class="chip on" data-v="semi-furnished">Semi-furnished</button>
+            <button class="chip" data-v="unfurnished">Unfurnished</button>
+          </div>
+        </div>
+        <p class="status" id="status">Loading model…</p>
+      </div>
+      <div class="panel">
+        <h2>What drives the price</h2>
+        <div id="imp"></div>
+        <p class="note">City isn't an input, and furnished and semi-furnished give the same price. Each of those features had importance below 1%, so I removed them, and removing them improved the model. Only "unfurnished" made a real difference.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="how">
+    <div><b>Pipeline</b>545 houses. One-hot encoding, scaling, and a log transform of price to reduce the effect of very expensive houses. Six regression models were compared against a mean-price baseline.</div>
+    <div><b>Tuning</b>Optuna searched 30 Gradient Boosting configurations. The winner uses 155 shallow trees (depth 2) with a learning rate of 0.044.</div>
+    <div><b>Honest limits</b>R² of 0.52 means the model explains about half of the price variation. Treat each estimate as a ballpark: the average error on unseen houses was about $112k.</div>
+  </div>
+
+  <footer><span>Phyu Sin Lynn (Emi)</span><a href="../">emi-psl.github.io/portfolio</a></footer>
+</div>
+
+<script>
+(async function () {
+  const $ = id => document.getElementById(id);
+  let M = null, reno = "semi-furnished";
+  const fmt = v => "$" + Math.round(v).toLocaleString("en-US");
+
+  function predict(h) {
+    const raw = { "House Area (sqm)": h.area, "No. of Bedrooms": h.bed, "No. of Toilets": h.toilet, "Stories": h.stories };
+    const x = M.features.map(f => {
+      if (f === "Renovation Status_unfurnished") return h.reno === "unfurnished" ? 1 : 0;
+      const [m1, s1, m2, s2] = M.affine[f]; return ((raw[f] - m1) / s1 - m2) / s2;
+    });
+    let s = M.init;
+    for (const t of M.trees) { let n = 0; while (t.l[n] !== -1) n = x[t.f[n]] <= t.t[n] ? t.l[n] : t.r[n]; s += M.lr * t.v[n]; }
+    return Math.expm1(s);
+  }
+
+  const W = 520, H = 300, P = { l: 58, r: 14, t: 12, b: 34 };
+  const sx = v => P.l + (v - 150) / (1650 - 150) * (W - P.l - P.r);
+  const sy = v => H - P.b - (v - 0) / (1400000) * (H - P.t - P.b);
+  function drawBase() {
+    let g = "";
+    for (let v = 0; v <= 1400000; v += 350000) g += `<line x1="${P.l}" x2="${W - P.r}" y1="${sy(v)}" y2="${sy(v)}" stroke="rgba(255,255,255,.08)"/><text x="${P.l - 8}" y="${sy(v) + 4}" fill="#a49b8e" font-size="11" text-anchor="end" font-family="DM Mono">$${v / 1000}k</text>`;
+    for (let v = 300; v <= 1500; v += 300) g += `<text x="${sx(v)}" y="${H - 12}" fill="#a49b8e" font-size="11" text-anchor="middle" font-family="DM Mono">${v} sqm</text>`;
+    g += M.points.map(([a, p]) => `<circle cx="${sx(a).toFixed(1)}" cy="${sy(p).toFixed(1)}" r="2.6" fill="rgba(244,239,228,.35)"/>`).join("");
+    g += `<g id="me"></g>`;
+    $("chart").innerHTML = g;
+  }
+
+  function update() {
+    const h = { area: +$("area").value, bed: +$("bed").value, toilet: +$("toilet").value, stories: +$("stories").value, reno };
+    $("v-area").textContent = h.area + " sqm"; $("v-bed").textContent = h.bed; $("v-toilet").textContent = h.toilet; $("v-stories").textContent = h.stories;
+    if (!M) return;
+    const p = predict(h);
+    $("price").textContent = fmt(p);
+    $("range").textContent = `Typical error on unseen houses: ±${fmt(112036)}`;
+    $("me").innerHTML = `<line x1="${sx(h.area)}" x2="${sx(h.area)}" y1="${P.t}" y2="${H - P.b}" stroke="#c4161c" stroke-dasharray="3 4" opacity=".6"/>
+      <circle cx="${sx(h.area)}" cy="${sy(p)}" r="8" fill="#c4161c" stroke="#f4efe4" stroke-width="2"/>
+      <text x="${Math.min(sx(h.area) + 12, W - 90)}" y="${sy(p) - 12}" fill="#f4efe4" font-size="12" font-family="DM Mono">your house</text>`;
+  }
+
+  ["area", "bed", "toilet", "stories"].forEach(id => $(id).addEventListener("input", update));
+  $("reno").onclick = e => { const b = e.target.closest(".chip"); if (!b) return; reno = b.dataset.v; $("reno").querySelectorAll(".chip").forEach(c => c.classList.toggle("on", c === b)); update(); };
+  update();
+
+  try {
+    M = await (await fetch("models/house.json")).json();
+    const names = { "House Area (sqm)": "Area", "No. of Toilets": "Toilets", "Renovation Status_unfurnished": "Unfurnished", "No. of Bedrooms": "Bedrooms", "Stories": "Storeys" };
+    $("imp").innerHTML = Object.entries(M.importance).sort((a, b) => b[1] - a[1]).map(([k, v]) =>
+      `<div class="bar" style="grid-template-columns:96px 1fr 54px"><span>${names[k]}</span><div class="track"><div class="fill" style="width:${v * 100}%"></div></div><span class="pct">${(v * 100).toFixed(1)}%</span></div>`).join("");
+    drawBase(); update();
+    $("status").textContent = "Drag the sliders. The estimate updates instantly.";
+  } catch (e) { $("status").textContent = "Couldn't load the model. Please refresh the page."; }
+})();
+</script>
+</body>
+</html>

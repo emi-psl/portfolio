@@ -29,7 +29,7 @@ const PROJECTS = [
       "Found house area, toilets and renovation status to be the strongest price drivers.",
     ],
     repo: "https://github.com/emi-psl/housing-price-prediction-ml",
-    demo: "",
+    demo: "demos/house.html",
   },
   {
     category: "ml",
@@ -43,7 +43,7 @@ const PROJECTS = [
       "Applied preprocessing, feature scaling, baseline comparison and hyperparameter optimisation.",
     ],
     repo: "https://github.com/emi-psl/factory-machine-failure-prediction",
-    demo: "",
+    demo: "demos/factory.html",
   },
   {
     category: "ml",
@@ -57,7 +57,7 @@ const PROJECTS = [
       "Used PCA to reduce dimensions and visualise cluster structure.",
     ],
     repo: "https://github.com/emi-psl/customer-segmentation-clustering",
-    demo: "",
+    demo: "demos/customers.html",
   },
   {
     category: "ml",
@@ -71,7 +71,7 @@ const PROJECTS = [
       "Evaluated forecast error to compare models across the three utilities.",
     ],
     repo: "https://github.com/emi-psl/energy-consumption-forecasting",
-    demo: "",
+    demo: "demos/energy.html",
   },
 
   // ---------------- 02 Deep Learning ----------------

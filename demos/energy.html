@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Energy forecast explorer — SARIMA demo · Emi</title>
+  <meta name="description" content="Explore 33 years of gas, electricity and water use, my SARIMA test forecasts, and a 60-month forecast with confidence intervals.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="demo.css">
+  <style>
+    :root { --acc: #c4161c; }
+    .stage.wide { grid-template-columns: 1fr; }
+    #chart { width: 100%; display: block; cursor: crosshair; }
+    .controls { display: flex; flex-wrap: wrap; gap: 18px 28px; align-items: center; margin-top: 16px; }
+    .controls label { font-size: 14px; display: flex; align-items: center; gap: 10px; }
+    input[type=range] { accent-color: var(--acc); width: 200px; }
+    .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    @media (max-width: 720px) { .metrics { grid-template-columns: repeat(2, 1fr); } }
+    .metrics div { border-top: 2px solid var(--ink); padding-top: 8px; }
+    .metrics b { display: block; font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+    .metrics span { font-family: var(--serif); font-size: 26px; }
+    .tip { position: absolute; pointer-events: none; background: #f4efe4; color: #1f1b17; font-family: var(--mono); font-size: 12px; padding: 6px 9px; border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,.35); opacity: 0; transition: opacity .12s; white-space: nowrap; z-index: 2; }
+    .key { display: flex; flex-wrap: wrap; gap: 16px; font-family: var(--mono); font-size: 11.5px; color: #a49b8e; margin-top: 10px; }
+    .key i { display: inline-block; width: 18px; height: 3px; vertical-align: middle; margin-right: 6px; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><a href="../#contents">← Back to portfolio</a><span class="tag">Live demo · Machine learning</span></div>
+
+  <p class="eyebrow">Energy consumption forecasting</p>
+  <h1>33 years of data. <em>Five years ahead.</em></h1>
+  <p class="lede">I tuned a SARIMA model for each utility. Explore how each one did on the 24 months it never saw, and its 60-month forecast with a 95% confidence band. Hover over the chart for exact values.</p>
+  <p class="credit">Solo project · <a href="https://github.com/emi-psl/energy-consumption-forecasting">View the code on GitHub</a></p>
+
+  <div class="stage wide">
+    <div class="screen">
+      <div class="screen-label"><span><span class="dot">●</span> <span id="title">Electricity</span></span><span id="model"></span></div>
+      <div style="position:relative">
+        <svg id="chart" viewBox="0 0 1000 420" aria-label="Consumption history and forecast"></svg>
+        <div class="tip" id="tip"></div>
+      </div>
+      <div class="key">
+        <span><i style="background:#f4efe4"></i>actual</span>
+        <span><i style="background:#e9c46a"></i>test forecast (unseen 2021–2023)</span>
+        <span><i style="background:#c4161c"></i>60-month forecast</span>
+        <span><i style="background:rgba(196,22,28,.35);height:9px"></i>95% interval</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:24px">
+    <div class="chips" id="tabs"></div>
+    <div class="controls">
+      <label>History shown <input type="range" id="hist" min="3" max="33" value="10"> <b class="mono" id="v-hist"></b></label>
+      <label>Forecast length <input type="range" id="hor" min="6" max="60" step="6" value="60"> <b class="mono" id="v-hor"></b></label>
+    </div>
+    <div class="metrics" style="margin-top:22px">
+      <div><b>Test MAPE</b><span id="mape">–</span></div>
+      <div><b>Test MAE</b><span id="mae">–</span></div>
+      <div><b>Test RMSE</b><span id="rmse">–</span></div>
+      <div><b>Forecast for <span id="lastd"></span></b><span id="lastv">–</span></div>
+    </div>
+    <p class="note" id="comment"></p>
+  </div>
+
+  <div class="how">
+    <div><b>Honest testing</b>The data was split by time: train 1990–2020, validate on 12 months, test on the final 24. Nothing was shuffled, and the test period was forecast only once.</div>
+    <div><b>Tuning</b>I grid-searched 144 SARIMA configurations per series, choosing on validation MAPE only. The chosen orders are shown above the chart.</div>
+    <div><b>Reading the band</b>The shaded band widens the further ahead it goes, because forecasts become less certain with distance. Water's wide band reflects irregular swings that SARIMA can't fully capture.</div>
+  </div>
+
+  <footer><span>Phyu Sin Lynn (Emi)</span><a href="../">emi-psl.github.io/portfolio</a></footer>
+</div>
+
+<script>
+(async function () {
+  const $ = id => document.getElementById(id);
+  const D = await (await fetch("models/energy.json")).json();
+  const NOTES = {
+    Electricity: "Electricity is very predictable: the test forecast was off by about 3% on average.",
+    Gas: "Gas improved the most from tuning, with validation MAPE falling from 9.7% to 7.0%.",
+    Water: "Water is the hardest to predict because of irregular swings, which is why its error and interval are the largest. The notebook documents this limitation."
+  };
+  let cur = "Electricity";
+  $("tabs").innerHTML = Object.keys(D.series).map(k => `<button class="chip${k === cur ? " on" : ""}" data-k="${k}">${k}</button>`).join("");
+  $("tabs").onclick = e => { const b = e.target.closest(".chip"); if (!b) return; cur = b.dataset.k; $("tabs").querySelectorAll(".chip").forEach(c => c.classList.toggle("on", c === b)); draw(); };
+
+  const W = 1000, H = 420, P = { l: 64, r: 16, t: 16, b: 36 };
+  let geo = null;
+
+  function draw() {
+    const S = D.series[cur], nH = +$("hist").value * 12, nF = +$("hor").value;
+    $("v-hist").textContent = $("hist").value + " yrs"; $("v-hor").textContent = nF + " months";
+    const N = D.dates.length, start = Math.max(0, N - nH);
+    const dates = D.dates.slice(start).concat(D.fc_dates.slice(0, nF));
+    const act = S.actual.slice(start), fm = S.fc_mean.slice(0, nF), lo = S.fc_lo.slice(0, nF), hi = S.fc_hi.slice(0, nF);
+    const testStart = N - 24;
+    const all = act.concat(lo, hi, S.test_pred);
+    let ymin = Math.min(...all), ymax = Math.max(...all); const pad = (ymax - ymin) * .08; ymin -= pad; ymax += pad;
+    const n = dates.length;
+    const sx = i => P.l + i / (n - 1) * (W - P.l - P.r), sy = v => H - P.b - (v - ymin) / (ymax - ymin) * (H - P.t - P.b);
+    const line = (arr, off) => arr.map((v, i) => `${i ? "L" : "M"}${sx(i + off).toFixed(1)} ${sy(v).toFixed(1)}`).join("");
+    let g = "";
+    for (let k = 0; k <= 4; k++) { const v = ymin + (ymax - ymin) * k / 4; g += `<line x1="${P.l}" x2="${W - P.r}" y1="${sy(v)}" y2="${sy(v)}" stroke="rgba(255,255,255,.08)"/><text x="${P.l - 8}" y="${sy(v) + 4}" fill="#a49b8e" font-size="12" text-anchor="end" font-family="DM Mono">${Math.round(v).toLocaleString()}</text>`; }
+    dates.forEach((d, i) => { if (d.endsWith("-01") && (+d.slice(0, 4)) % (nH > 180 ? 5 : 2) === 0) g += `<text x="${sx(i)}" y="${H - 12}" fill="#a49b8e" font-size="12" text-anchor="middle" font-family="DM Mono">${d.slice(0, 4)}</text>`; });
+    const fOff = act.length;
+    // forecast region shading + band
+    g += `<rect x="${sx(fOff - 1)}" y="${P.t}" width="${sx(n - 1) - sx(fOff - 1)}" height="${H - P.t - P.b}" fill="rgba(196,22,28,.05)"/>`;
+    const band = hi.map((v, i) => `${i ? "L" : "M"}${sx(fOff + i)} ${sy(v)}`).join("") + lo.slice().reverse().map((v, i) => `L${sx(fOff + lo.length - 1 - i)} ${sy(v)}`).join("") + "Z";
+    g += `<path d="${band}" fill="rgba(196,22,28,.28)"/>`;
+    g += `<path d="${line(act, 0)}" fill="none" stroke="#f4efe4" stroke-width="1.6"/>`;
+    if (testStart >= start) g += `<path d="${line(S.test_pred, testStart - start)}" fill="none" stroke="#e9c46a" stroke-width="2.2" stroke-dasharray="6 4"/>`;
+    g += `<path d="M${sx(fOff - 1)} ${sy(act[act.length - 1])}L${sx(fOff)} ${sy(fm[0])}${line(fm, fOff).replace(/^M/, "L")}" fill="none" stroke="#c4161c" stroke-width="2.4"/>`;
+    g += `<line x1="${sx(fOff - 1)}" x2="${sx(fOff - 1)}" y1="${P.t}" y2="${H - P.b}" stroke="rgba(255,255,255,.35)" stroke-dasharray="2 4"/><text x="${sx(fOff - 1) + 6}" y="${P.t + 12}" fill="#a49b8e" font-size="11" font-family="DM Mono">forecast →</text>`;
+    g += `<line id="hl" x1="0" x2="0" y1="${P.t}" y2="${H - P.b}" stroke="rgba(255,255,255,.5)" opacity="0"/>`;
+    $("chart").innerHTML = g;
+    geo = { n, sx, dates, act, fm, lo, hi, fOff, start, testStart, S };
+
+    $("title").textContent = cur + " (" + S.unit + ")";
+    $("model").textContent = `SARIMA(${S.order.join(",")})(${S.seasonal.join(",")},12)`;
+    $("mape").textContent = (S.test_metrics.MAPE * 100).toFixed(1) + "%";
+    $("mae").textContent = S.test_metrics.MAE.toFixed(S.test_metrics.MAE < 10 ? 2 : 1);
+    $("rmse").textContent = S.test_metrics.RMSE.toFixed(S.test_metrics.RMSE < 10 ? 2 : 1);
+    $("lastd").textContent = D.fc_dates[nF - 1];
+    $("lastv").textContent = Math.round(fm[nF - 1]).toLocaleString() + " " + S.unit;
+    $("comment").textContent = NOTES[cur];
+  }
+
+  const svg = $("chart"), tip = $("tip");
+  svg.addEventListener("mousemove", e => {
+    if (!geo) return;
+    const r = svg.getBoundingClientRect(), x = (e.clientX - r.left) * W / r.width;
+    const i = Math.max(0, Math.min(geo.n - 1, Math.round((x - P.l) / (W - P.l - P.r) * (geo.n - 1))));
+    const hl = $("hl"); hl.setAttribute("x1", geo.sx(i)); hl.setAttribute("x2", geo.sx(i)); hl.setAttribute("opacity", 1);
+    const u = geo.S.unit; let txt = geo.dates[i] + "  ";
+    if (i < geo.fOff) {
+      txt += `actual ${geo.act[i].toLocaleString()} ${u}`;
+      const ti = geo.start + i - geo.testStart; if (ti >= 0) txt += ` · test forecast ${geo.S.test_pred[ti].toLocaleString()}`;
+    } else { const k = i - geo.fOff; txt += `forecast ${geo.fm[k].toLocaleString()} ${u} (95%: ${geo.lo[k].toLocaleString()}–${geo.hi[k].toLocaleString()})`; }
+    tip.textContent = txt; tip.style.opacity = 1;
+    const px = (geo.sx(i) / W) * r.width; tip.style.left = Math.min(px + 12, r.width - tip.offsetWidth - 4) + "px"; tip.style.top = "8px";
+  });
+  svg.addEventListener("mouseleave", () => { tip.style.opacity = 0; const hl = $("hl"); if (hl) hl.setAttribute("opacity", 0); });
+  ["hist", "hor"].forEach(id => $(id).addEventListener("input", draw));
+  draw();
+})();
+</script>
+</body>
+</html>

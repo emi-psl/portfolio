@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Customer segments explorer — K-Means demo · Emi</title>
+  <meta name="description" content="Explore six K-Means customer segments and see which segment a new customer would join.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="demo.css">
+  <style>
+    :root { --acc: #c4161c; }
+    #plot { width: 100%; display: block; }
+    .field { margin: 12px 0; }
+    .field label { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 6px; }
+    .field label b { font-family: var(--mono); font-weight: 500; }
+    input[type=range] { width: 100%; accent-color: var(--acc); }
+    .seg { display: flex; gap: 14px; align-items: flex-start; }
+    .swatch { width: 18px; height: 18px; border-radius: 50%; flex: none; margin-top: 5px; }
+    .seg h3 { font-family: var(--serif); font-size: 20px; }
+    .legend { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 10px; font-family: var(--mono); font-size: 11.5px; color: #a49b8e; }
+    .legend span { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+    .legend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .legend span.off { opacity: .3; }
+    table { width: 100%; border-collapse: collapse; font-size: 13.5px; margin-top: 8px; }
+    td { padding: 4px 0; border-bottom: 1px solid rgba(0,0,0,.08); } td:last-child { text-align: right; font-family: var(--mono); }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><a href="../#contents">← Back to portfolio</a><span class="tag">Live demo · Machine learning</span></div>
+
+  <p class="eyebrow">Customer segmentation</p>
+  <h1>Six kinds of shopper. <em>Which one are you?</em></h1>
+  <p class="lede">K-Means grouped 200 customers into six segments by age, income and spending (silhouette 0.428). Move the sliders to place a new customer and see which segment they join, using the same scaling and cluster centres as my notebook.</p>
+  <p class="credit">Solo project · <a href="https://github.com/emi-psl/customer-segmentation-clustering">View the code on GitHub</a></p>
+
+  <div class="stage">
+    <div class="screen">
+      <div class="screen-label"><span><span class="dot">●</span> 200 customers</span>
+        <span><button class="chip on" id="ax1" style="color:#f4efe4;border-color:#6f675c;padding:2px 9px;font-size:11px">income × spending</button>
+        <button class="chip" id="ax2" style="color:#f4efe4;border-color:#6f675c;padding:2px 9px;font-size:11px">age × spending</button></span></div>
+      <svg id="plot" viewBox="0 0 520 400" aria-label="Customer scatter plot coloured by segment"></svg>
+      <div class="legend" id="legend"></div>
+    </div>
+
+    <div>
+      <div class="panel">
+        <h2>New customer</h2>
+        <div class="field"><label>Age <b id="v-age"></b></label><input type="range" id="age" min="18" max="70" value="40"></div>
+        <div class="field"><label>Annual income <b id="v-inc"></b></label><input type="range" id="inc" min="15" max="137" value="88"></div>
+        <div class="field"><label>Spending score (1–100) <b id="v-sp"></b></label><input type="range" id="sp" min="1" max="99" value="20"></div>
+      </div>
+      <div class="panel">
+        <div class="seg"><div class="swatch" id="sw"></div><div><p class="eyebrow" id="segno">Segment</p><h3 id="segname">–</h3></div></div>
+        <table id="prof"></table>
+        <p class="note" id="rec"></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="how">
+    <div><b>Choosing six</b>I tested k = 2 to 10. The elbow, silhouette (0.428), Calinski–Harabasz (135.1) and Davies–Bouldin scores all pointed to six segments.</div>
+    <div><b>Fair distances</b>Age, income and spending are standardised first, so income (in $k) doesn't outweigh the 1–100 spending score.</div>
+    <div><b>The business call</b>Segment 2 earns about $89k but spends the least. That makes it the biggest growth opportunity for personalised promotions and loyalty rewards.</div>
+  </div>
+
+  <footer><span>Phyu Sin Lynn (Emi)</span><a href="../">emi-psl.github.io/portfolio</a></footer>
+</div>
+
+<script>
+(async function () {
+  const $ = id => document.getElementById(id);
+  const COLORS = ["#e9c46a", "#7fb3d5", "#c4161c", "#2f8f4e", "#c77dff", "#f4a261"];
+  const NAMES = ["Older, mid income, moderate spenders", "Young, mid income, moderate spenders", "High income, low spenders", "High income, high spenders", "Low income, high spenders", "Low income, low spenders"];
+  let D = null, axes = "inc", hidden = new Set();
+
+  const W = 520, H = 400, P = { l: 44, r: 14, t: 14, b: 36 };
+  const X = { inc: [10, 142, "Income ($k)"], age: [15, 72, "Age"] };
+  const sx = v => P.l + (v - X[axes][0]) / (X[axes][1] - X[axes][0]) * (W - P.l - P.r);
+  const sy = v => H - P.b - v / 100 * (H - P.t - P.b);
+
+  function assign(age, inc, sp) {
+    const x = [age, inc, sp].map((v, i) => (v - D.mean[i]) / D.scale[i]);
+    let best = 0, bd = Infinity;
+    D.centroids.forEach((c, k) => { const d = c.reduce((s, cv, i) => s + (cv - x[i]) ** 2, 0); if (d < bd) { bd = d; best = k; } });
+    return best;
+  }
+
+  function draw() {
+    const age = +$("age").value, inc = +$("inc").value, sp = +$("sp").value;
+    $("v-age").textContent = age; $("v-inc").textContent = "$" + inc + "k"; $("v-sp").textContent = sp;
+    if (!D) return;
+    const seg = assign(age, inc, sp);
+    let g = "";
+    for (let v = 0; v <= 100; v += 25) g += `<line x1="${P.l}" x2="${W - P.r}" y1="${sy(v)}" y2="${sy(v)}" stroke="rgba(255,255,255,.08)"/><text x="${P.l - 8}" y="${sy(v) + 4}" fill="#a49b8e" font-size="11" text-anchor="end" font-family="DM Mono">${v}</text>`;
+    const [lo, hi, lab] = X[axes], step = axes === "inc" ? 20 : 10;
+    for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) g += `<text x="${sx(v)}" y="${H - 16}" fill="#a49b8e" font-size="11" text-anchor="middle" font-family="DM Mono">${v}</text>`;
+    g += `<text x="${W - P.r}" y="${H - 2}" fill="#a49b8e" font-size="11" text-anchor="end" font-family="DM Mono">${lab} →</text><text x="${P.l}" y="${P.t - 2}" fill="#a49b8e" font-size="11" font-family="DM Mono">spending ↑</text>`;
+    for (const [a, i, s, c] of D.points) {
+      if (hidden.has(c)) continue;
+      const on = c === seg;
+      g += `<circle cx="${sx(axes === "inc" ? i : a).toFixed(1)}" cy="${sy(s).toFixed(1)}" r="${on ? 5 : 4}" fill="${COLORS[c]}" opacity="${on ? .95 : .45}"/>`;
+    }
+    const mx = sx(axes === "inc" ? inc : age), my = sy(sp);
+    g += `<path d="M${mx} ${my - 13} L${mx + 4} ${my - 4} L${mx + 13} ${my - 4} L${mx + 6} ${my + 2} L${mx + 9} ${my + 12} L${mx} ${my + 6} L${mx - 9} ${my + 12} L${mx - 6} ${my + 2} L${mx - 13} ${my - 4} L${mx - 4} ${my - 4} Z" fill="#f4efe4" stroke="${COLORS[seg]}" stroke-width="2.5"/>`;
+    $("plot").innerHTML = g;
+
+    const p = D.profiles[seg];
+    $("sw").style.background = COLORS[seg];
+    $("segno").textContent = `Segment ${seg} · ${p.n} customers`;
+    $("segname").textContent = NAMES[seg];
+    $("prof").innerHTML = `<tr><td>Average age</td><td>${p.age}</td></tr><tr><td>Average income</td><td>$${p.income}k</td></tr><tr><td>Average spending score</td><td>${p.spend}</td></tr><tr><td>Share female</td><td>${Math.round(p.female * 100)}%</td></tr>`;
+    $("rec").textContent = seg === 2 ? "★ The segment I recommended focusing on: strong purchasing power but the lowest spending, so it has the most room to grow." : "";
+  }
+
+  ["age", "inc", "sp"].forEach(id => $(id).addEventListener("input", draw));
+  $("ax1").onclick = () => { axes = "inc"; $("ax1").classList.add("on"); $("ax2").classList.remove("on"); draw(); };
+  $("ax2").onclick = () => { axes = "age"; $("ax2").classList.add("on"); $("ax1").classList.remove("on"); draw(); };
+  $("legend").innerHTML = COLORS.map((c, i) => `<span data-c="${i}"><i style="background:${c}"></i>Segment ${i}</span>`).join("");
+  $("legend").onclick = e => { const s = e.target.closest("span"); if (!s) return; const c = +s.dataset.c; hidden.has(c) ? hidden.delete(c) : hidden.add(c); s.classList.toggle("off"); draw(); };
+
+  draw();
+  D = await (await fetch("models/customers.json")).json();
+  draw();
+})();
+</script>
+</body>
+</html>

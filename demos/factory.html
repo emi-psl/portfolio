@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Machine failure predictor — Random Forest demo · Emi</title>
+  <meta name="description" content="Set a factory machine's sensor readings and a tuned Random Forest estimates its risk of failure.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="demo.css">
+  <style>
+    :root { --acc: #c4161c; }
+    .field { margin: 12px 0; }
+    .field label { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 6px; }
+    .field label b { font-family: var(--mono); font-weight: 500; }
+    input[type=range] { width: 100%; accent-color: var(--acc); }
+    .gauge { width: 100%; max-width: 380px; display: block; margin: 6px auto 0; }
+    .verdict { text-align: center; font-family: var(--serif); font-size: 30px; color: #f4efe4; margin-top: 4px; }
+    .verdict.bad { color: #ff6b6b; }
+    .derived { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 18px; font-family: var(--mono); font-size: 12.5px; color: #e9e2d4; }
+    .derived div { border: 1px solid rgba(255,255,255,.12); border-radius: 10px; padding: 8px 10px; }
+    .derived b { display: block; font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: #a49b8e; font-weight: 500; margin-bottom: 2px; }
+    .votes { text-align: center; font-family: var(--mono); font-size: 12.5px; color: #a49b8e; margin-top: 6px; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><a href="../#contents">← Back to portfolio</a><span class="tag">Live demo · Machine learning</span></div>
+
+  <p class="eyebrow">Factory machine failure prediction</p>
+  <h1>Read the sensors. <em>Catch the failure</em> before it happens.</h1>
+  <p class="lede">This is my Optuna-tuned Random Forest (196 trees), rebuilt from the notebook with the same test results: F1 0.886, recall 0.86. Set a machine's readings and it estimates the risk of failure, live in your browser.</p>
+  <p class="credit">Solo project · <a href="https://github.com/emi-psl/factory-machine-failure-prediction">View the code on GitHub</a></p>
+
+  <div class="stage">
+    <div class="screen">
+      <div class="screen-label"><span><span class="dot">●</span> Failure risk</span><span id="trees">196 trees</span></div>
+      <svg class="gauge" id="gauge" viewBox="0 0 300 170" aria-label="Failure risk gauge"></svg>
+      <div class="verdict" id="verdict">–</div>
+      <div class="votes" id="votes"></div>
+      <div class="derived">
+        <div><b>Torque ÷ speed</b><span id="d-tps"></span></div>
+        <div><b>Temp difference</b><span id="d-td"></span></div>
+        <div><b>Tool wear &gt; 150</b><span id="d-hw"></span></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel">
+        <h2>Sensor readings</h2>
+        <div class="btns" style="margin:0 0 6px" id="presets">
+          <button class="btn" data-p="normal">Typical machine</button>
+          <button class="btn" data-p="strain">Overloaded</button>
+          <button class="btn" data-p="worn">Worn tool</button>
+        </div>
+        <div class="field"><label>Torque <b id="v-tq"></b></label><input type="range" id="tq" min="4" max="77" step="0.1"></div>
+        <div class="field"><label>Rotation speed <b id="v-rs"></b></label><input type="range" id="rs" min="1168" max="2886" step="1"></div>
+        <div class="field"><label>Tool wear <b id="v-tw"></b></label><input type="range" id="tw" min="0" max="253" step="1"></div>
+        <div class="field"><label>Ambient temperature <b id="v-at"></b></label><input type="range" id="at" min="22" max="32" step="0.05"></div>
+        <div class="field"><label>Process temperature <b id="v-pt"></b></label><input type="range" id="pt" min="32.5" max="41.5" step="0.05"></div>
+        <div class="field"><label>Product quality</label><div class="chips" id="q"><button class="chip" data-v="L">Low</button><button class="chip on" data-v="M">Medium</button><button class="chip" data-v="H">High</button></div></div>
+        <p class="status" id="status">Loading model…</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="how">
+    <div><b>The hard part</b>Only 3.4% of the 20,000 records are failures. A model that always says "working" scores 96.6% accuracy but catches nothing, so I judged models by recall and F1 instead.</div>
+    <div><b>What it learned</b>The most important signals are torque relative to speed (a feature I engineered), tool wear and torque. Mechanical strain plus a worn tool is the classic failure pattern.</div>
+    <div><b>Under the hood</b>Each of the 196 trees votes, and the gauge shows the weighted share of trees predicting failure. Balanced class weights make the rare failures count fully.</div>
+  </div>
+
+  <footer><span>Phyu Sin Lynn (Emi)</span><a href="../">emi-psl.github.io/portfolio</a></footer>
+</div>
+
+<script>
+(async function () {
+  const $ = id => document.getElementById(id);
+  let M = null, quality = "M";
+  const PRESETS = {
+    normal: { tq: 40, rs: 1500, tw: 100, at: 26.9, pt: 36.9 },
+    strain: { tq: 68, rs: 1250, tw: 60, at: 26.9, pt: 36.9 },
+    worn: { tq: 60, rs: 1300, tw: 235, at: 27.5, pt: 37.5 },
+  };
+  function set(p) { for (const k in p) $(k).value = p[k]; update(); }
+
+  function scale(name, v) { const [kind, c, s] = M.scalers[name]; return (v - c) / s; }
+  function predict(r) {
+    const tps = r.tq / r.rs, td = r.pt - r.at;
+    const x = [scale("Ambient T (C)", r.at), scale("Process T (C)", r.pt), scale("Rotation Speed (rpm)", r.rs), scale("Torque (Nm)", r.tq), scale("Tool Wear (min)", r.tw),
+      quality === "L" ? 1 : 0, quality === "M" ? 1 : 0, scale("Temp_Diff", td), scale("Torque_per_speed", tps), r.tw > 150 ? 1 : 0];
+    let s = 0, votes = 0;
+    for (const t of M.trees) { let n = 0; while (t.l[n] !== -1) n = x[t.f[n]] <= t.t[n] ? t.l[n] : t.r[n]; s += t.p[n]; if (t.p[n] > .5) votes++; }
+    return { p: s / M.trees.length, votes, tps, td };
+  }
+
+  function gauge(p) {
+    const cx = 150, cy = 150, R = 118, a = Math.PI * (1 - p);
+    const arc = (from, to, col, w) => { const x1 = cx + R * Math.cos(Math.PI * (1 - from)), y1 = cy - R * Math.sin(Math.PI * (1 - from)), x2 = cx + R * Math.cos(Math.PI * (1 - to)), y2 = cy - R * Math.sin(Math.PI * (1 - to)); return `<path d="M${x1} ${y1} A${R} ${R} 0 0 1 ${x2} ${y2}" stroke="${col}" stroke-width="${w}" fill="none" stroke-linecap="round"/>`; };
+    $("gauge").innerHTML = arc(0, 1, "rgba(255,255,255,.1)", 20) + (p > 0.002 ? arc(0, p, p >= .5 ? "#ff6b6b" : "#e9c46a", 20) : "") +
+      `<line x1="${cx}" y1="${cy}" x2="${cx + (R - 26) * Math.cos(a)}" y2="${cy - (R - 26) * Math.sin(a)}" stroke="#f4efe4" stroke-width="4" stroke-linecap="round"/><circle cx="${cx}" cy="${cy}" r="8" fill="#f4efe4"/>` +
+      `<text x="${cx}" y="${cy - 34}" fill="#f4efe4" font-size="34" text-anchor="middle" font-family="Playfair Display, serif">${Math.round(p * 100)}%</text>` +
+      `<text x="22" y="166" fill="#a49b8e" font-size="11" font-family="DM Mono">0%</text><text x="278" y="166" fill="#a49b8e" font-size="11" text-anchor="end" font-family="DM Mono">100%</text>`;
+  }
+
+  function update() {
+    const r = { tq: +$("tq").value, rs: +$("rs").value, tw: +$("tw").value, at: +$("at").value, pt: +$("pt").value };
+    $("v-tq").textContent = r.tq.toFixed(1) + " Nm"; $("v-rs").textContent = r.rs + " rpm"; $("v-tw").textContent = r.tw + " min";
+    $("v-at").textContent = r.at.toFixed(2) + " °C"; $("v-pt").textContent = r.pt.toFixed(2) + " °C";
+    if (!M) return;
+    const o = predict(r);
+    gauge(o.p);
+    const bad = o.p >= .5;
+    $("verdict").textContent = bad ? "Likely to fail" : "Likely working";
+    $("verdict").classList.toggle("bad", bad);
+    $("votes").textContent = `${o.votes} of ${M.trees.length} trees predict failure`;
+    $("d-tps").textContent = o.tps.toFixed(4); $("d-td").textContent = o.td.toFixed(2) + " °C"; $("d-hw").textContent = r.tw > 150 ? "yes" : "no";
+  }
+
+  ["tq", "rs", "tw", "at", "pt"].forEach(id => $(id).addEventListener("input", update));
+  $("q").onclick = e => { const b = e.target.closest(".chip"); if (!b) return; quality = b.dataset.v; $("q").querySelectorAll(".chip").forEach(c => c.classList.toggle("on", c === b)); update(); };
+  $("presets").onclick = e => { const b = e.target.closest("[data-p]"); if (b) set(PRESETS[b.dataset.p]); };
+  set(PRESETS.normal);
+
+  try {
+    $("status").textContent = "Loading 196 trees…";
+    M = await (await fetch("models/factory.json")).json();
+    update();
+    $("status").textContent = "Try the presets, then drag the sliders to explore.";
+  } catch (e) { $("status").textContent = "Couldn't load the model. Please refresh the page."; }
+})();
+</script>
+</body>
+</html>
