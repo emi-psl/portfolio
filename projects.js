@@ -154,7 +154,7 @@ const PROJECTS = [
       "Contributed to research, development and the final pitch.",
     ],
     stat: { value: "Category", label: "Finalist" },
-    repo: "",
+    repo: "https://github.com/William35-f/Clarity-Agentic-AI-insurance-navigator",
     demo: "",
   },
   {
