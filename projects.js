@@ -160,15 +160,17 @@ const PROJECTS = [
   {
     category: "gen",
     title: "Tiny Transformer Language Model",
-    subtitle: "Generative AI with LLMs",
+    subtitle: "Does attention head count matter?",
     type: "Solo project",
-    tools: ["Python", "Transformers", "Attention"],
-    summary: "Building a small Transformer from the ground up.",
+    tools: ["PyTorch", "Transformers", "Self-attention"],
+    summary: "A small causal Transformer built from scratch to predict the next character, with a controlled 4-head vs 2-head experiment.",
     points: [
-      "Built a small Transformer language model, working with attention and positional information.",
-      "Trained it and compared experiments to see how design choices affect results.",
+      "Implemented multi-head causal self-attention with separate Q/K/V projections, and tested shapes, masking, gradients and save/reload.",
+      "Diagnosed a masking bug that blocked tokens from attending to themselves and produced NaN attention weights.",
+      "Ran a controlled comparison with identical starting weights and batches: 2 heads reached lower validation loss (3.14 vs 3.42), contradicting my hypothesis.",
     ],
-    repo: "",
+    stat: { value: "42.9%", label: "next-char accuracy" },
+    repo: "https://github.com/emi-psl/tiny-transformer-attention-heads",
     demo: "",
   },
 
